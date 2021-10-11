@@ -1,0 +1,32 @@
+(env
+ (_
+  (env-vars
+   (OCAML_ERROR_STYLE "short")
+   (OCAML_COLOR "never"))))
+
+(rule
+ (targets pp.ml)
+ (action
+  (write-file %{targets} "let () = Ppxlib.Driver.standalone ()")))
+
+(executable
+ (name pp)
+ (modules pp)
+ (libraries ppx_effects ppxlib))
+
+(include dune.inc)
+
+(rule
+ (targets dune.inc.gen)
+ (deps
+  (source_tree .))
+ (action
+  (with-stdout-to
+    %{targets}
+   (run ../gen_dune_rules.exe --expect-failure))))
+
+(rule
+ (alias runtest)
+ (package ppx_effects)
+ (action
+  (diff dune.inc dune.inc.gen)))

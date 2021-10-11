@@ -1,0 +1,31 @@
+open Obj.Effect_handlers
+open Obj.Effect_handlers.Deep
+type _ Obj.Effect_handlers.eff +=  
+  | E: string Obj.Effect_handlers.eff 
+let comp () = print_string "0 "; print_string (perform E); print_string "3 "
+let () =
+  Obj.Effect_handlers.Deep.try_with (fun () -> comp ()) ()
+    {
+      effc = fun (type a) ->
+        fun (effect : a Obj.Effect_handlers.eff) ->
+          match effect with
+          | E ->
+              Some
+                ((fun (k : (a, _) Obj.Effect_handlers.Deep.continuation) ->
+                    print_string "1 "; continue k "2 "; print_string "4 "))
+          | _ -> None
+    }
+let () =
+  Obj.Effect_handlers.Deep.match_with (fun () -> comp ()) ()
+    {
+      retc = (function | e -> e);
+      exnc = (function | e -> raise e);
+      effc = fun (type a) ->
+        fun (effect : a Obj.Effect_handlers.eff) ->
+          match effect with
+          | E ->
+              Some
+                ((fun (k : (a, _) Obj.Effect_handlers.Deep.continuation) ->
+                    print_string "1 "; continue k "2 "; print_string "4 "))
+          | _ -> None
+    }

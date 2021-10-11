@@ -1,0 +1,2 @@
+File "rebind.ml", line 1, characters 0-22:
+Error: ppx_effects: cannot process effect defined as an alias of ‘E’.
