@@ -1,6 +1,6 @@
 exception%effect E: string
 
-let f () = Obj.Effect_handlers.perform E
+let f () = Stdlib.EffectHandlers.perform E
 let g () = f
 
 (* If the scrutinee is already of the form [f x], where [f] and [x] are both

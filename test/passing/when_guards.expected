@@ -1,5 +1,5 @@
-type _ Obj.Effect_handlers.eff +=  
-  | Foo: bool -> unit Obj.Effect_handlers.eff 
+type _ Stdlib.EffectHandlers.eff +=  
+  | Foo: bool -> unit Stdlib.EffectHandlers.eff 
 let _ =
   Ppx_effects_runtime.match_with (fun `unit -> false) `unit
     {
@@ -11,15 +11,15 @@ let _ =
          | e -> Ppx_effects_runtime.raise e);
       effc =
         (let effc : type continue_input.
-           continue_input Obj.Effect_handlers.eff ->
-             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+           continue_input Stdlib.EffectHandlers.eff ->
+             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
+                _)
                option
            =
            function
            | Foo b when b -> Some ((fun _ -> 'e'))
            | Foo b when not b -> Some ((fun _ -> 'e'))
-           | Foo _ ->
-               Some ((fun k -> Obj.Effect_handlers.Deep.continue k ()))
+           | Foo _ -> Some ((fun k -> EffectHandlers.Deep.continue k ()))
            | _ -> None in
          effc)
     }

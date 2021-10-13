@@ -16,7 +16,7 @@ let raise_errorf ~loc fmt = Location.raise_errorf ~loc ("%s: " ^^ fmt) namespace
     - effect patterns (written using [\[%effect? ...\]]);
     - return patterns (available only to [match]).
 
-    The [Obj.Effect_handlers] API requires passing different continuations for
+    The [Stdlib.EffectHandlers] API requires passing different continuations for
     each of these categories. *)
 module Cases = struct
   type partitioned = { ret : cases; exn : cases; eff : cases }
@@ -109,7 +109,7 @@ module Cases = struct
         | _ -> false)
 end
 
-(** The [Obj.Effect_handlers] API requires effects to happen under a function
+(** The [Stdlib.EffectHandlers] API requires effects to happen under a function
     application *)
 module Scrutinee = struct
   type delayed = { function_ : expression; argument : expression }
@@ -194,9 +194,9 @@ let effc ~loc (cases : cases) : expression =
   [%expr
     let effc :
         type continue_input.
-        continue_input Obj.Effect_handlers.eff ->
-        ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _) option
-        =
+        continue_input Stdlib.EffectHandlers.eff ->
+        ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation -> _)
+        option =
       [%e pexp_function ~loc (cases @ noop_case)]
     in
     effc]
@@ -283,7 +283,7 @@ let impl : structure -> structure =
 
 let effect_decl_of_exn_decl ~loc (exn : type_exception) : type_extension =
   let name = exn.ptyexn_constructor.pext_name in
-  let eff_type = Located.lident ~loc "Obj.Effect_handlers.eff" in
+  let eff_type = Located.lident ~loc "Stdlib.EffectHandlers.eff" in
   let constrs, args =
     match exn.ptyexn_constructor.pext_kind with
     | Pext_decl (constrs, body) ->

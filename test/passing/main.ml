@@ -1,5 +1,5 @@
-open Obj.Effect_handlers
-open Obj.Effect_handlers.Deep
+open Stdlib.EffectHandlers
+open Stdlib.EffectHandlers.Deep
 
 exception%effect E: string
 

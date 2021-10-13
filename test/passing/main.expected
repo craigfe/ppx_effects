@@ -1,15 +1,16 @@
-open Obj.Effect_handlers
-open Obj.Effect_handlers.Deep
-type _ Obj.Effect_handlers.eff +=  
-  | E: string Obj.Effect_handlers.eff 
+open Stdlib.EffectHandlers
+open Stdlib.EffectHandlers.Deep
+type _ Stdlib.EffectHandlers.eff +=  
+  | E: string Stdlib.EffectHandlers.eff 
 let comp () = print_string "0 "; print_string (perform E); print_string "3 "
 let () =
   Ppx_effects_runtime.try_with comp ()
     {
       Ppx_effects_runtime.effc =
         (let effc : type continue_input.
-           continue_input Obj.Effect_handlers.eff ->
-             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+           continue_input Stdlib.EffectHandlers.eff ->
+             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
+                _)
                option
            =
            function
@@ -27,8 +28,9 @@ let () =
       exnc = Ppx_effects_runtime.raise;
       effc =
         (let effc : type continue_input.
-           continue_input Obj.Effect_handlers.eff ->
-             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+           continue_input Stdlib.EffectHandlers.eff ->
+             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
+                _)
                option
            =
            function

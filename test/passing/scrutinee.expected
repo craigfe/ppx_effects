@@ -1,14 +1,15 @@
-type _ Obj.Effect_handlers.eff +=  
-  | E: string Obj.Effect_handlers.eff 
-let f () = Obj.Effect_handlers.perform E
+type _ Stdlib.EffectHandlers.eff +=  
+  | E: string Stdlib.EffectHandlers.eff 
+let f () = Stdlib.EffectHandlers.perform E
 let g () = f
 let _ =
   Ppx_effects_runtime.try_with f ()
     {
       Ppx_effects_runtime.effc =
         (let effc : type continue_input.
-           continue_input Obj.Effect_handlers.eff ->
-             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+           continue_input Stdlib.EffectHandlers.eff ->
+             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
+                _)
                option
            = function | E -> Some ((fun _ -> "")) | _ -> None in
          effc)
@@ -18,8 +19,9 @@ let _ =
     {
       Ppx_effects_runtime.effc =
         (let effc : type continue_input.
-           continue_input Obj.Effect_handlers.eff ->
-             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+           continue_input Stdlib.EffectHandlers.eff ->
+             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
+                _)
                option
            = function | E -> Some ((fun _ -> "")) | _ -> None in
          effc)
@@ -29,8 +31,9 @@ let _ =
     {
       Ppx_effects_runtime.effc =
         (let effc : type continue_input.
-           continue_input Obj.Effect_handlers.eff ->
-             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+           continue_input Stdlib.EffectHandlers.eff ->
+             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
+                _)
                option
            = function | E -> Some ((fun _ -> "")) | _ -> None in
          effc)
@@ -40,8 +43,9 @@ let _ =
     {
       Ppx_effects_runtime.effc =
         (let effc : type continue_input.
-           continue_input Obj.Effect_handlers.eff ->
-             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+           continue_input Stdlib.EffectHandlers.eff ->
+             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
+                _)
                option
            = function | E -> Some ((fun _ -> "")) | _ -> None in
          effc)
@@ -51,8 +55,9 @@ let _ =
     {
       Ppx_effects_runtime.effc =
         (let effc : type continue_input.
-           continue_input Obj.Effect_handlers.eff ->
-             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+           continue_input Stdlib.EffectHandlers.eff ->
+             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
+                _)
                option
            = function | E -> Some ((fun _ -> "")) | _ -> None in
          effc)

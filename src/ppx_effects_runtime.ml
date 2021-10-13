@@ -3,8 +3,8 @@
 
 let raise = Stdlib.raise
 
-open Obj.Effect_handlers
-open Obj.Effect_handlers.Deep
+open Stdlib.EffectHandlers
+open Stdlib.EffectHandlers.Deep
 
 type nonrec ('a, 'b) handler = ('a, 'b) handler = {
   retc : 'a -> 'b;
