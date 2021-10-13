@@ -19,6 +19,27 @@
  (action
   (diff dangling.expected dangling.actual)))
 
+; -------- Test: `double_when_guard.ml` --------
+
+; Run the PPX on the `.ml` file
+(rule
+ (targets double_when_guard.actual)
+ (deps
+  (:pp pp.exe)
+  (:input double_when_guard.ml))
+ (action
+  ; expect the process to fail, capturing stderr
+  (with-stderr-to
+   %{targets}
+   (bash "! ./%{pp} -no-color --impl %{input}"))))
+
+; Compare the post-processed output to the .expected file
+(rule
+ (alias runtest)
+ (package ppx_effects)
+ (action
+  (diff double_when_guard.expected double_when_guard.actual)))
+
 ; -------- Test: `invalid_payload_type_in_match.ml` --------
 
 ; Run the PPX on the `.ml` file

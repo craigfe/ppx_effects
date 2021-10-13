@@ -21,75 +21,91 @@ let raise_errorf ~loc fmt = Location.raise_errorf ~loc ("%s: " ^^ fmt) namespace
 module Cases = struct
   type partitioned = { ret : cases; exn : cases; eff : cases }
 
-  let partition : map_subnodes:Ast_traverse.map -> cases -> partitioned =
-   fun ~map_subnodes cases ->
-    ListLabels.fold_right cases ~init:{ ret = []; exn = []; eff = [] }
-      ~f:(fun case acc ->
-        match case.pc_lhs with
-        | [%pat? [%effect? [%p? body]]] -> (
+  let get_effect_payload ~loc : payload -> pattern * expression option =
+    function
+    | PPat (x, y) -> (x, y)
+    | _ ->
+        (* The user made a mistake and forgot to add [?] after [effect] (this
+           node captures expressions rather than patterns). *)
+        raise_errorf ~loc
+          "invalid node %a used as a pattern.@,\
+           Hint: did you mean to use %a instead?" pp_quoted "[%effect <expr>]"
+          pp_quoted "[%effect? <pattern>]"
+
+  let fold_case :
+      map_subnodes:Ast_traverse.map -> case -> partitioned -> partitioned =
+   fun ~map_subnodes case acc ->
+    match case.pc_lhs with
+    | { ppat_desc = Ppat_extension ({ txt = "effect"; _ }, payload); _ } -> (
+        let loc = case.pc_lhs.ppat_loc in
+        let body, internal_guard = get_effect_payload ~loc payload in
+        let pc_guard =
+          match (internal_guard, case.pc_guard) with
+          | None, None -> None
+          | (Some _ as x), None | None, (Some _ as x) -> x
+          | Some _, Some _ ->
+              raise_errorf ~loc
+                "cannot specify %a both inside and outside the [%%effect? ...] \
+                 node."
+                pp_quoted "when"
+        in
+        match body with
+        | [%pat? [%p? eff_pattern], [%p? k_pattern]] ->
+            let pc_rhs =
+              let loc = case.pc_rhs.pexp_loc in
+              [%expr
+                Some
+                  (fun [%p k_pattern] ->
+                    [%e map_subnodes#expression case.pc_rhs])]
+            in
+            let case = { pc_lhs = eff_pattern; pc_rhs; pc_guard } in
+            { acc with eff = case :: acc.eff }
+        (* Also allow a single [_] to wildcard both effect and pattern. *)
+        | [%pat? _] ->
+            let pc_rhs =
+              let loc = case.pc_rhs.pexp_loc in
+              [%expr Some (fun _ -> [%e map_subnodes#expression case.pc_rhs])]
+            in
+            let case = { pc_lhs = [%pat? _]; pc_rhs; pc_guard } in
+            { acc with eff = case :: acc.eff }
+        (* Can't split the pattern into effect and continuation components. *)
+        | _ -> (
+            let error_prefix =
+              "invalid [%effect? ...] payload. Expected a pattern for an (eff, \
+               continuation) pair"
+            in
+            (* Maybe the user missed a comma separating the two? *)
             match body with
-            | [%pat? [%p? eff_pattern], [%p? k_pattern]] ->
-                let pc_rhs =
-                  let loc = case.pc_rhs.pexp_loc in
-                  [%expr
-                    Some
-                      (fun [%p k_pattern] ->
-                        [%e map_subnodes#expression case.pc_rhs])]
-                in
-                let case =
-                  { pc_lhs = eff_pattern; pc_rhs; pc_guard = case.pc_guard }
-                in
-                { acc with eff = case :: acc.eff }
-            (* Also allow a single [_] to wildcard both effect and pattern. *)
-            | [%pat? _] ->
-                let pc_rhs =
-                  let loc = case.pc_rhs.pexp_loc in
-                  [%expr
-                    Some (fun _ -> [%e map_subnodes#expression case.pc_rhs])]
-                in
-                let case = { case with pc_rhs } in
-                { acc with eff = case :: acc.eff }
-            (* Can't split the pattern into effect and continuation components.
-               Maybe the user missed a comma separating the two? *)
             | {
              ppat_desc =
                Ppat_construct
                  (effect, Some { ppat_desc = Ppat_var { txt = "k"; _ }; _ });
              _;
             } ->
-                raise_errorf ~loc:case.pc_lhs.ppat_loc
-                  "invalid [%%effect? ...] payload. Expected a pattern for an \
-                   (eff, continuation) pair.@,\
-                   Hint: did you mean %a?" pp_quoted
+                raise_errorf ~loc "%s.@,Hint: did you mean %a?" error_prefix
+                  pp_quoted
                   (Printf.sprintf "[%%effect? %s, k]"
                      (Longident.name effect.txt))
-            (* No idea what they did – just raise a generic error. *)
+            (* Otherwise, just raise a generic error. *)
             | _ ->
-                raise_errorf ~loc:case.pc_lhs.ppat_loc
-                  "invalid [%%effect? ...] payload. Expected a pattern for an \
-                   (eff, continuation) pair, e.g. %a."
-                  pp_quoted "[%effect? Foo, k]")
-        | [%pat? exception [%p? exn_pattern]] ->
-            let pc_rhs = map_subnodes#expression case.pc_rhs in
-            let case =
-              { pc_lhs = exn_pattern; pc_rhs; pc_guard = case.pc_guard }
-            in
-            { acc with exn = case :: acc.exn }
-        | _ ->
-            (* TODO: handle guards on effects and exceptions properly *)
-            { acc with ret = case :: acc.ret })
+                raise_errorf ~loc "%s, e.g. %a." error_prefix pp_quoted
+                  "[%effect? Foo, k]"))
+    | [%pat? exception [%p? exn_pattern]] ->
+        let pc_rhs = map_subnodes#expression case.pc_rhs in
+        let case = { pc_lhs = exn_pattern; pc_rhs; pc_guard = case.pc_guard } in
+        { acc with exn = case :: acc.exn }
+    | _ -> { acc with ret = case :: acc.ret }
+
+  let partition : map_subnodes:Ast_traverse.map -> cases -> partitioned =
+   fun ~map_subnodes cases ->
+    ListLabels.fold_right cases
+      ~init:{ ret = []; exn = []; eff = [] }
+      ~f:(fold_case ~map_subnodes)
 
   let contain_effect_handler : cases -> bool =
     List.exists (fun case ->
-        match case.pc_lhs with
-        | [%pat? [%effect? [%p? _]]] -> true
-        | [%pat? [%effect [%e? _]]] ->
-            (* The user made a mistake and forgot to add [?] after [effect] (this
-               node captures expressions rather than patterns). *)
-            raise_errorf ~loc:case.pc_lhs.ppat_loc
-              "invalid node %a used as a pattern.@,\
-               Hint: did you mean to use %a instead?" pp_quoted
-              "[%effect <expr>]" pp_quoted "[%effect? <pattern>]"
+        match case.pc_lhs.ppat_desc with
+        | Ppat_extension ({ txt = "effect"; _ }, _) -> true
         | _ -> false)
 end
 

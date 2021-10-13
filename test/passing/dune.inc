@@ -85,4 +85,33 @@
  (action
   (run ./scrutinee.exe)))
 
+; -------- Test: `when_guards.ml` --------; The PPX-dependent executable under test
+(executable
+ (name when_guards)
+ (modules when_guards)
+ (preprocess (pps ppx_effects)))
+
+; Run the PPX on the `.ml` file
+(rule
+ (targets when_guards.actual)
+ (deps
+  (:pp pp.exe)
+  (:input when_guards.ml))
+ (action
+  (run ./%{pp} --impl %{input} -o %{targets})))
+
+; Compare the post-processed output to the .expected file
+(rule
+ (alias runtest)
+ (package ppx_effects)
+ (action
+  (diff when_guards.expected when_guards.actual)))
+
+; Ensure that the post-processed executable runs correctly
+(rule
+ (alias runtest)
+ (package ppx_effects)
+ (action
+  (run ./when_guards.exe)))
+
 

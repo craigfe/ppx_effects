@@ -1,0 +1,2 @@
+File "double_when_guard.ml", line 1, characters 23-48:
+Error: ppx_effects: cannot specify ‘when’ both inside and outside the [%effect? ...] node.

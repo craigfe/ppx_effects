@@ -1,0 +1,23 @@
+type _ Obj.Effect_handlers.eff +=  
+  | Foo: bool -> unit Obj.Effect_handlers.eff 
+let _ =
+  Obj.Effect_handlers.Deep.match_with (fun `unit -> false) `unit
+    {
+      retc = (function | _ when true -> 'a' | _ -> 'b');
+      exnc =
+        (function
+         | Not_found -> 'c'
+         | Failure s when String.equal s "Oops" -> 'd'
+         | e -> raise e);
+      effc = fun (type effect_param) ->
+        fun (effect : effect_param Obj.Effect_handlers.eff) ->
+          (match effect with
+           | Foo b when b -> Some ((fun _ -> 'e'))
+           | Foo b when not b -> Some ((fun _ -> 'e'))
+           | Foo _ ->
+               Some ((fun k -> Obj.Effect_handlers.Deep.continue k ()))
+           | _ -> None : ((effect_param, _)
+                            Obj.Effect_handlers.Deep.continuation -> 
+                            _)
+                           option)
+    }
