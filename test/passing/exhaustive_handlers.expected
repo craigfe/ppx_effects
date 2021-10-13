@@ -3,24 +3,24 @@ let run_and_discard_effect f a =
     {
       retc = (function | () -> ());
       exnc = raise;
-      effc = fun (type a) ->
-        fun (effect : a Obj.Effect_handlers.eff) ->
-          match effect with
-          | _ ->
-              Some
-                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
-                    ()))
+      effc = fun (type effect_param) ->
+        fun (effect : effect_param Obj.Effect_handlers.eff) ->
+          (match effect with | _ -> Some ((fun _ -> ())) : ((effect_param, 
+                                                              _)
+                                                              Obj.Effect_handlers.Deep.continuation
+                                                              -> _)
+                                                             option)
     }
 let run_and_discard_both f a =
   Obj.Effect_handlers.Deep.match_with f a
     {
       retc = (function | () -> ());
       exnc = (function | _ -> ());
-      effc = fun (type a) ->
-        fun (effect : a Obj.Effect_handlers.eff) ->
-          match effect with
-          | _ ->
-              Some
-                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
-                    ()))
+      effc = fun (type effect_param) ->
+        fun (effect : effect_param Obj.Effect_handlers.eff) ->
+          (match effect with | _ -> Some ((fun _ -> ())) : ((effect_param, 
+                                                              _)
+                                                              Obj.Effect_handlers.Deep.continuation
+                                                              -> _)
+                                                             option)
     }

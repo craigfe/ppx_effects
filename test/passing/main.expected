@@ -6,26 +6,32 @@ let comp () = print_string "0 "; print_string (perform E); print_string "3 "
 let () =
   Obj.Effect_handlers.Deep.try_with comp ()
     {
-      effc = fun (type a) ->
-        fun (effect : a Obj.Effect_handlers.eff) ->
-          match effect with
-          | E ->
-              Some
-                ((fun (k : (a, _) Obj.Effect_handlers.Deep.continuation) ->
-                    print_string "1 "; continue k "2 "; print_string "4 "))
-          | _ -> None
+      effc = fun (type effect_param) ->
+        fun (effect : effect_param Obj.Effect_handlers.eff) ->
+          (match effect with
+           | E ->
+               Some
+                 ((fun k ->
+                     print_string "1 "; continue k "2 "; print_string "4 "))
+           | _ -> None : ((effect_param, _)
+                            Obj.Effect_handlers.Deep.continuation -> 
+                            _)
+                           option)
     }
 let () =
   Obj.Effect_handlers.Deep.match_with comp ()
     {
       retc = (function | e -> e);
       exnc = raise;
-      effc = fun (type a) ->
-        fun (effect : a Obj.Effect_handlers.eff) ->
-          match effect with
-          | E ->
-              Some
-                ((fun (k : (a, _) Obj.Effect_handlers.Deep.continuation) ->
-                    print_string "1 "; continue k "2 "; print_string "4 "))
-          | _ -> None
+      effc = fun (type effect_param) ->
+        fun (effect : effect_param Obj.Effect_handlers.eff) ->
+          (match effect with
+           | E ->
+               Some
+                 ((fun k ->
+                     print_string "1 "; continue k "2 "; print_string "4 "))
+           | _ -> None : ((effect_param, _)
+                            Obj.Effect_handlers.Deep.continuation -> 
+                            _)
+                           option)
     }

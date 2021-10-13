@@ -31,8 +31,7 @@ module Cases = struct
               let loc = case.pc_rhs.pexp_loc in
               [%expr
                 Some
-                  (fun ([%p k_pattern] :
-                         (a, _) Obj.Effect_handlers.Deep.continuation) ->
+                  (fun [%p k_pattern] ->
                     [%e map_subnodes#expression case.pc_rhs])]
             in
             let case =
@@ -144,7 +143,8 @@ let effc ~loc (cases : cases) : expression =
     | false -> [ case ~lhs:[%pat? _] ~guard:None ~rhs:[%expr None] ]
   in
   [%expr
-    fun (type a) (effect : a Obj.Effect_handlers.eff) ->
+    fun (type effect_param) (effect : effect_param Obj.Effect_handlers.eff) :
+        ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _) option ->
       [%e pexp_match ~loc [%expr effect] (cases @ noop_case)]]
 
 (* Given a list of exception handlers, build a corresponding [exnc] continuation

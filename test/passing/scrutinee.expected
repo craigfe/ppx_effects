@@ -5,60 +5,45 @@ let g () = f
 let _ =
   Obj.Effect_handlers.Deep.try_with f ()
     {
-      effc = fun (type a) ->
-        fun (effect : a Obj.Effect_handlers.eff) ->
-          match effect with
-          | E ->
-              Some
-                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
-                    ""))
-          | _ -> None
+      effc = fun (type effect_param) ->
+        fun (effect : effect_param Obj.Effect_handlers.eff) ->
+          (match effect with | E -> Some ((fun _ -> "")) | _ -> None : 
+          ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _)
+            option)
     }
 let _ =
   Obj.Effect_handlers.Deep.try_with (fun `unit -> (Fun.id f) ()) `unit
     {
-      effc = fun (type a) ->
-        fun (effect : a Obj.Effect_handlers.eff) ->
-          match effect with
-          | E ->
-              Some
-                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
-                    ""))
-          | _ -> None
+      effc = fun (type effect_param) ->
+        fun (effect : effect_param Obj.Effect_handlers.eff) ->
+          (match effect with | E -> Some ((fun _ -> "")) | _ -> None : 
+          ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _)
+            option)
     }
 let _ =
   Obj.Effect_handlers.Deep.try_with (fun `unit -> f (Fun.id ())) `unit
     {
-      effc = fun (type a) ->
-        fun (effect : a Obj.Effect_handlers.eff) ->
-          match effect with
-          | E ->
-              Some
-                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
-                    ""))
-          | _ -> None
+      effc = fun (type effect_param) ->
+        fun (effect : effect_param Obj.Effect_handlers.eff) ->
+          (match effect with | E -> Some ((fun _ -> "")) | _ -> None : 
+          ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _)
+            option)
     }
 let _ =
   Obj.Effect_handlers.Deep.try_with (fun `unit -> g () ()) `unit
     {
-      effc = fun (type a) ->
-        fun (effect : a Obj.Effect_handlers.eff) ->
-          match effect with
-          | E ->
-              Some
-                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
-                    ""))
-          | _ -> None
+      effc = fun (type effect_param) ->
+        fun (effect : effect_param Obj.Effect_handlers.eff) ->
+          (match effect with | E -> Some ((fun _ -> "")) | _ -> None : 
+          ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _)
+            option)
     }
 let _ =
   Obj.Effect_handlers.Deep.try_with (fun `unit -> let () = () in f ()) `unit
     {
-      effc = fun (type a) ->
-        fun (effect : a Obj.Effect_handlers.eff) ->
-          match effect with
-          | E ->
-              Some
-                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
-                    ""))
-          | _ -> None
+      effc = fun (type effect_param) ->
+        fun (effect : effect_param Obj.Effect_handlers.eff) ->
+          (match effect with | E -> Some ((fun _ -> "")) | _ -> None : 
+          ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _)
+            option)
     }
