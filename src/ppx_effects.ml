@@ -9,6 +9,14 @@ open Ast_builder.Default
 let namespace = "ppx_effects"
 let pp_quoted ppf s = Format.fprintf ppf "‘%s’" s
 
+(** Cases of [match] / [try] can be partitioned into three categories:
+
+    - exception patterns (uing the [exception] keyword);
+    - effect patterns (written using [\[%effect? ...\]]);
+    - return patterns (available only to [match]).
+
+    The [Obj.Effect_handlers] API requires passing different continuations for
+    each of these categories. *)
 module Cases = struct
   type partitioned = { ret : cases; exn : cases; eff : cases }
 
@@ -43,6 +51,57 @@ module Cases = struct
         match case.pc_lhs with [%pat? [%effect? [%p? _]]] -> true | _ -> false)
 end
 
+(** The [Obj.Effect_handlers] API requires effects to happen under a function
+    application *)
+module Scrutinee = struct
+  type delayed = { function_ : expression; argument : expression }
+
+  (* An expression is a syntactic value if its AST structure precludes it from
+     raising an effect or an exception. Here we use a very simple
+     under-approximation (avoiding multiple recursion): *)
+  let rec expr_is_syntactic_value (expr : expression) : bool =
+    match expr.pexp_desc with
+    | Pexp_ident _ | Pexp_constant _ | Pexp_function _ | Pexp_fun _
+    | Pexp_construct (_, None)
+    | Pexp_variant (_, None)
+    | Pexp_field _ | Pexp_lazy _ ->
+        true
+    | Pexp_let _ | Pexp_apply _ | Pexp_match _ | Pexp_try _ | Pexp_tuple _
+    | Pexp_record _ | Pexp_setfield _ | Pexp_array _ | Pexp_ifthenelse _
+    | Pexp_sequence _ | Pexp_while _ | Pexp_for _ | Pexp_new _ | Pexp_override _
+    | Pexp_letmodule _ | Pexp_object _ | Pexp_pack _ | Pexp_letop _
+    | Pexp_extension _ | Pexp_unreachable ->
+        false
+    (* Congruence cases: *)
+    | Pexp_constraint (e, _)
+    | Pexp_coerce (e, _, _)
+    | Pexp_construct (_, Some e)
+    | Pexp_variant (_, Some e)
+    | Pexp_send (e, _)
+    | Pexp_setinstvar (_, e)
+    | Pexp_letexception (_, e)
+    | Pexp_assert e
+    | Pexp_newtype (_, e)
+    | Pexp_open (_, e) ->
+        expr_is_syntactic_value e
+    | Pexp_poly _ -> assert false
+
+  let of_expression = function
+    | [%expr [%e? function_] [%e? argument]]
+      when expr_is_syntactic_value function_ && expr_is_syntactic_value argument
+      ->
+        { function_; argument }
+    | e ->
+        (* If the expression is not already of the form [f x] then we must
+           allocate a thunk to delay the effect. *)
+        let loc = e.pexp_loc in
+        (* NOTE: here we use [`unit] over [()] in case the user has
+           shadowed the unit constructor. *)
+        let function_ = [%expr fun `unit -> [%e e]] in
+        let argument = [%expr `unit] in
+        { function_; argument }
+end
+
 let effc ~loc cases =
   [%expr
     fun (type a) (effect : a Obj.Effect_handlers.eff) ->
@@ -51,7 +110,6 @@ let effc ~loc cases =
           (cases @ [ case ~lhs:[%pat? _] ~guard:None ~rhs:[%expr None] ])]]
 
 let impl : structure -> structure =
-  (* Capture [try] / [match] blocks containing top-level [effects]. *)
   (object (this)
      inherit Ast_traverse.map as super
 
@@ -61,7 +119,9 @@ let impl : structure -> structure =
        (* match _ with [%effect? E _, k] -> ... *)
        | { pexp_desc = Pexp_match (scrutinee, cases); _ }
          when Cases.contain_effect_handler cases ->
-           let scrutinee = super#expression scrutinee in
+           let scrutinee =
+             Scrutinee.of_expression (super#expression scrutinee)
+           in
            let cases = Cases.partition cases in
            let expand_cases_rhs =
              List.map (fun case ->
@@ -74,13 +134,15 @@ let impl : structure -> structure =
                @ [ case ~lhs:[%pat? e] ~guard:None ~rhs:[%expr raise e] ])
            and effc = effc ~loc (cases.eff |> expand_cases_rhs) in
            [%expr
-             Obj.Effect_handlers.Deep.match_with
-               (fun () -> [%e scrutinee])
-               ()
+             Obj.Effect_handlers.Deep.match_with [%e scrutinee.function_]
+               [%e scrutinee.argument]
                { retc = [%e retc]; exnc = [%e exnc]; effc = [%e effc] }]
        (* try _ with [%effect? E _, k] -> ... *)
        | { pexp_desc = Pexp_try (scrutinee, cases); _ }
          when Cases.contain_effect_handler cases ->
+           let scrutinee =
+             Scrutinee.of_expression (super#expression scrutinee)
+           in
            let cases = Cases.partition cases in
            let expand_cases_rhs =
              List.map (fun case ->
@@ -88,15 +150,15 @@ let impl : structure -> structure =
            in
            let effc = effc ~loc (cases.eff |> expand_cases_rhs) in
            [%expr
-             Obj.Effect_handlers.Deep.try_with
-               (fun () -> [%e scrutinee])
-               ()
+             Obj.Effect_handlers.Deep.try_with [%e scrutinee.function_]
+               [%e scrutinee.argument]
                { effc = [%e effc] }]
        | e -> super#expression e
 
      method! structure_item stri =
        let loc = stri.pstr_loc in
        match stri with
+       (* exception%effect ... *)
        | [%stri [%%effect [%%i? { pstr_desc = Pstr_exception exn; _ }]]] ->
            (* TODO: handle attributes on the extension? *)
            let name = exn.ptyexn_constructor.pext_name in

@@ -4,7 +4,7 @@ type _ Obj.Effect_handlers.eff +=
   | E: string Obj.Effect_handlers.eff 
 let comp () = print_string "0 "; print_string (perform E); print_string "3 "
 let () =
-  Obj.Effect_handlers.Deep.try_with (fun () -> comp ()) ()
+  Obj.Effect_handlers.Deep.try_with comp ()
     {
       effc = fun (type a) ->
         fun (effect : a Obj.Effect_handlers.eff) ->
@@ -16,7 +16,7 @@ let () =
           | _ -> None
     }
 let () =
-  Obj.Effect_handlers.Deep.match_with (fun () -> comp ()) ()
+  Obj.Effect_handlers.Deep.match_with comp ()
     {
       retc = (function | e -> e);
       exnc = (function | e -> raise e);

@@ -18,9 +18,7 @@ let output_stanzas ~expect_failure filename =
           @[<v 1>(with-stderr-to@,\
           %%{targets}@,\
           (bash \"! ./%%{pp} -no-color --impl %%{input}\"))@]"
-        else
-          "(run ./%%{pp} -deriving-keep-w32 both --impl %%{input} -o \
-           %%{targets})")
+        else "(run ./%%{pp} --impl %%{input} -o %%{targets})")
     in
     Format.fprintf ppf
       "; Run the PPX on the `.ml` file@,\

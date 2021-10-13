@@ -1,0 +1,64 @@
+type _ Obj.Effect_handlers.eff +=  
+  | E: string Obj.Effect_handlers.eff 
+let f () = Obj.Effect_handlers.perform E
+let g () = f
+let _ =
+  Obj.Effect_handlers.Deep.try_with f ()
+    {
+      effc = fun (type a) ->
+        fun (effect : a Obj.Effect_handlers.eff) ->
+          match effect with
+          | E ->
+              Some
+                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
+                    ""))
+          | _ -> None
+    }
+let _ =
+  Obj.Effect_handlers.Deep.try_with (fun `unit -> (Fun.id f) ()) `unit
+    {
+      effc = fun (type a) ->
+        fun (effect : a Obj.Effect_handlers.eff) ->
+          match effect with
+          | E ->
+              Some
+                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
+                    ""))
+          | _ -> None
+    }
+let _ =
+  Obj.Effect_handlers.Deep.try_with (fun `unit -> f (Fun.id ())) `unit
+    {
+      effc = fun (type a) ->
+        fun (effect : a Obj.Effect_handlers.eff) ->
+          match effect with
+          | E ->
+              Some
+                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
+                    ""))
+          | _ -> None
+    }
+let _ =
+  Obj.Effect_handlers.Deep.try_with (fun `unit -> g () ()) `unit
+    {
+      effc = fun (type a) ->
+        fun (effect : a Obj.Effect_handlers.eff) ->
+          match effect with
+          | E ->
+              Some
+                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
+                    ""))
+          | _ -> None
+    }
+let _ =
+  Obj.Effect_handlers.Deep.try_with (fun `unit -> let () = () in f ()) `unit
+    {
+      effc = fun (type a) ->
+        fun (effect : a Obj.Effect_handlers.eff) ->
+          match effect with
+          | E ->
+              Some
+                ((fun (_ : (a, _) Obj.Effect_handlers.Deep.continuation) ->
+                    ""))
+          | _ -> None
+    }
