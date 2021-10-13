@@ -3,47 +3,57 @@ type _ Obj.Effect_handlers.eff +=
 let f () = Obj.Effect_handlers.perform E
 let g () = f
 let _ =
-  Obj.Effect_handlers.Deep.try_with f ()
+  Ppx_effects_runtime.try_with f ()
     {
-      effc = fun (type effect_param) ->
-        fun (effect : effect_param Obj.Effect_handlers.eff) ->
-          (match effect with | E -> Some ((fun _ -> "")) | _ -> None : 
-          ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _)
-            option)
+      Ppx_effects_runtime.effc =
+        (let effc : type continue_input.
+           continue_input Obj.Effect_handlers.eff ->
+             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+               option
+           = function | E -> Some ((fun _ -> "")) | _ -> None in
+         effc)
     }
 let _ =
-  Obj.Effect_handlers.Deep.try_with (fun `unit -> (Fun.id f) ()) `unit
+  Ppx_effects_runtime.try_with (fun `unit -> (Fun.id f) ()) `unit
     {
-      effc = fun (type effect_param) ->
-        fun (effect : effect_param Obj.Effect_handlers.eff) ->
-          (match effect with | E -> Some ((fun _ -> "")) | _ -> None : 
-          ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _)
-            option)
+      Ppx_effects_runtime.effc =
+        (let effc : type continue_input.
+           continue_input Obj.Effect_handlers.eff ->
+             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+               option
+           = function | E -> Some ((fun _ -> "")) | _ -> None in
+         effc)
     }
 let _ =
-  Obj.Effect_handlers.Deep.try_with (fun `unit -> f (Fun.id ())) `unit
+  Ppx_effects_runtime.try_with (fun `unit -> f (Fun.id ())) `unit
     {
-      effc = fun (type effect_param) ->
-        fun (effect : effect_param Obj.Effect_handlers.eff) ->
-          (match effect with | E -> Some ((fun _ -> "")) | _ -> None : 
-          ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _)
-            option)
+      Ppx_effects_runtime.effc =
+        (let effc : type continue_input.
+           continue_input Obj.Effect_handlers.eff ->
+             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+               option
+           = function | E -> Some ((fun _ -> "")) | _ -> None in
+         effc)
     }
 let _ =
-  Obj.Effect_handlers.Deep.try_with (fun `unit -> g () ()) `unit
+  Ppx_effects_runtime.try_with (fun `unit -> g () ()) `unit
     {
-      effc = fun (type effect_param) ->
-        fun (effect : effect_param Obj.Effect_handlers.eff) ->
-          (match effect with | E -> Some ((fun _ -> "")) | _ -> None : 
-          ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _)
-            option)
+      Ppx_effects_runtime.effc =
+        (let effc : type continue_input.
+           continue_input Obj.Effect_handlers.eff ->
+             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+               option
+           = function | E -> Some ((fun _ -> "")) | _ -> None in
+         effc)
     }
 let _ =
-  Obj.Effect_handlers.Deep.try_with (fun `unit -> let () = () in f ()) `unit
+  Ppx_effects_runtime.try_with (fun `unit -> let () = () in f ()) `unit
     {
-      effc = fun (type effect_param) ->
-        fun (effect : effect_param Obj.Effect_handlers.eff) ->
-          (match effect with | E -> Some ((fun _ -> "")) | _ -> None : 
-          ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _)
-            option)
+      Ppx_effects_runtime.effc =
+        (let effc : type continue_input.
+           continue_input Obj.Effect_handlers.eff ->
+             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+               option
+           = function | E -> Some ((fun _ -> "")) | _ -> None in
+         effc)
     }

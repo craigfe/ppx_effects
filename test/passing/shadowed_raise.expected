@@ -1,14 +1,14 @@
 let raise = `shadowed
 let () =
-  Obj.Effect_handlers.Deep.match_with (fun `unit -> ()) `unit
+  Ppx_effects_runtime.match_with (fun `unit -> ()) `unit
     {
-      retc = (function | () -> ());
+      Ppx_effects_runtime.retc = (function | () -> ());
       exnc = Ppx_effects_runtime.raise;
-      effc = fun (type effect_param) ->
-        fun (effect : effect_param Obj.Effect_handlers.eff) ->
-          (match effect with | _ -> Some ((fun _ -> ())) : ((effect_param, 
-                                                              _)
-                                                              Obj.Effect_handlers.Deep.continuation
-                                                              -> _)
-                                                             option)
+      effc =
+        (let effc : type continue_input.
+           continue_input Obj.Effect_handlers.eff ->
+             ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _)
+               option
+           = function | _ -> Some ((fun _ -> ())) in
+         effc)
     }

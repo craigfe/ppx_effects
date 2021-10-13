@@ -189,10 +189,17 @@ let effc ~loc (cases : cases) : expression =
     | true -> []
     | false -> [ case ~lhs:[%pat? _] ~guard:None ~rhs:[%expr None] ]
   in
+  (* NOTE: the name [continue_input] is leaked to the user (accessible from
+     their code, and appears in error message). *)
   [%expr
-    fun (type effect_param) (effect : effect_param Obj.Effect_handlers.eff) :
-        ((effect_param, _) Obj.Effect_handlers.Deep.continuation -> _) option ->
-      [%e pexp_match ~loc [%expr effect] (cases @ noop_case)]]
+    let effc :
+        type continue_input.
+        continue_input Obj.Effect_handlers.eff ->
+        ((continue_input, _) Obj.Effect_handlers.Deep.continuation -> _) option
+        =
+      [%e pexp_function ~loc (cases @ noop_case)]
+    in
+    effc]
 
 (* Given a list of exception handlers, build a corresponding [exnc] continuation
    to pass to [Deep.{try,match}_with]. *)
@@ -241,9 +248,13 @@ let impl : structure -> structure =
            and exnc = exnc ~loc cases.exn
            and effc = effc ~loc cases.eff in
            [%expr
-             Obj.Effect_handlers.Deep.match_with [%e scrutinee.function_]
+             Ppx_effects_runtime.match_with [%e scrutinee.function_]
                [%e scrutinee.argument]
-               { retc = [%e retc]; exnc = [%e exnc]; effc = [%e effc] }]
+               {
+                 Ppx_effects_runtime.retc = [%e retc];
+                 exnc = [%e exnc];
+                 effc = [%e effc];
+               }]
        (* Handles: [ try _ with [%effect? E _, k] -> ... ] *)
        | { pexp_desc = Pexp_try (scrutinee, cases); _ }
          when Cases.contain_effect_handler cases ->
@@ -253,9 +264,9 @@ let impl : structure -> structure =
            let cases = Cases.partition ~map_subnodes:this cases in
            let effc = effc ~loc cases.eff in
            [%expr
-             Obj.Effect_handlers.Deep.try_with [%e scrutinee.function_]
+             Ppx_effects_runtime.try_with [%e scrutinee.function_]
                [%e scrutinee.argument]
-               { effc = [%e effc] }]
+               { Ppx_effects_runtime.effc = [%e effc] }]
        | e -> super#expression e
 
      method! extension =
