@@ -1,2 +1,4 @@
 File "dangling.ml", line 1, characters 11-17:
-Error: ppx_effects: dangling [%effect ...] extension node. This node may be used in the top level of ‘match’ or ‘try’ patterns as ‘[%effect? ...]’, or on an exception definition as ‘exception%effect ...’.
+Error: ppx_effects: dangling [%effect ...] extension node. This node may be used as:
+ - the top level of ‘match’ or ‘try’ patterns as ‘[%effect? ...]’
+ - on an exception definition as ‘exception%effect ...’.

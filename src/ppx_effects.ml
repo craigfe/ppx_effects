@@ -8,6 +8,7 @@ open Ast_builder.Default
 
 let namespace = "ppx_effects"
 let pp_quoted ppf s = Format.fprintf ppf "‘%s’" s
+let raise_errorf ~loc fmt = Location.raise_errorf ~loc ("%s: " ^^ fmt) namespace
 
 (** Cases of [match] / [try] can be partitioned into three categories:
 
@@ -48,7 +49,16 @@ module Cases = struct
 
   let contain_effect_handler : cases -> bool =
     List.exists (fun case ->
-        match case.pc_lhs with [%pat? [%effect? [%p? _]]] -> true | _ -> false)
+        match case.pc_lhs with
+        | [%pat? [%effect? [%p? _]]] -> true
+        | [%pat? [%effect [%e? _]]] ->
+            (* The user made a mistake and forgot to add [?] after [effect] (this
+               node captures expressions rather than patterns). *)
+            raise_errorf ~loc:case.pc_lhs.ppat_loc
+              "invalid node %a used as a pattern.@,\
+               Hint: did you mean to use %a instead?" pp_quoted
+              "[%effect <expr>]" pp_quoted "[%effect? <pattern>]"
+        | _ -> false)
 end
 
 (** The [Obj.Effect_handlers] API requires effects to happen under a function
@@ -173,9 +183,9 @@ let impl : structure -> structure =
                  in
                  (constrs, body)
              | Pext_rebind _ ->
-                 Location.raise_errorf ~loc
-                   "%s: cannot process effect defined as an alias of %a."
-                   namespace pp_quoted name.txt
+                 raise_errorf ~loc
+                   "cannot process effect defined as an alias of %a." pp_quoted
+                   name.txt
            in
            let params = [ (ptyp_any ~loc, (NoVariance, NoInjectivity)) ] in
            pstr_typext ~loc
@@ -191,12 +201,11 @@ let impl : structure -> structure =
      method! extension =
        function
        | { txt = "effect"; loc }, _ ->
-           Location.raise_errorf ~loc
-             "%s: dangling [%%effect ...] extension node. This node may be \
-              used in the top level of %a or %a patterns as %a, or on an \
-              exception definition as %a."
-             namespace pp_quoted "match" pp_quoted "try" pp_quoted
-             "[%effect? ...]" pp_quoted "exception%effect ..."
+           raise_errorf ~loc
+             "dangling [%%effect ...] extension node. This node may be used as:\n\
+             \ - the top level of %a or %a patterns as %a\n\
+             \ - on an exception definition as %a." pp_quoted "match" pp_quoted
+             "try" pp_quoted "[%effect? ...]" pp_quoted "exception%effect ..."
        | e -> super#extension e
   end)
     #structure

@@ -19,6 +19,50 @@
  (action
   (diff dangling.expected dangling.actual)))
 
+; -------- Test: `invalid_payload_type_in_match.ml` --------
+
+; Run the PPX on the `.ml` file
+(rule
+ (targets invalid_payload_type_in_match.actual)
+ (deps
+  (:pp pp.exe)
+  (:input invalid_payload_type_in_match.ml))
+ (action
+  ; expect the process to fail, capturing stderr
+  (with-stderr-to
+   %{targets}
+   (bash "! ./%{pp} -no-color --impl %{input}"))))
+
+; Compare the post-processed output to the .expected file
+(rule
+ (alias runtest)
+ (package ppx_effects)
+ (action
+  (diff invalid_payload_type_in_match.expected
+    invalid_payload_type_in_match.actual)))
+
+; -------- Test: `invalid_payload_type_in_try.ml` --------
+
+; Run the PPX on the `.ml` file
+(rule
+ (targets invalid_payload_type_in_try.actual)
+ (deps
+  (:pp pp.exe)
+  (:input invalid_payload_type_in_try.ml))
+ (action
+  ; expect the process to fail, capturing stderr
+  (with-stderr-to
+   %{targets}
+   (bash "! ./%{pp} -no-color --impl %{input}"))))
+
+; Compare the post-processed output to the .expected file
+(rule
+ (alias runtest)
+ (package ppx_effects)
+ (action
+  (diff invalid_payload_type_in_try.expected
+    invalid_payload_type_in_try.actual)))
+
 ; -------- Test: `rebind.ml` --------
 
 ; Run the PPX on the `.ml` file

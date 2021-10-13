@@ -1,0 +1,1 @@
+let () = match () with [%effect ()] -> ()

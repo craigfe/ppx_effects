@@ -1,0 +1,3 @@
+File "invalid_payload_type_in_match.ml", line 1, characters 23-35:
+Error: ppx_effects: invalid node ‘[%effect <expr>]’ used as a pattern.
+       Hint: did you mean to use ‘[%effect? <pattern>]’ instead?
