@@ -21,27 +21,29 @@ let raise_errorf ~loc fmt = Location.raise_errorf ~loc ("%s: " ^^ fmt) namespace
 module Cases = struct
   type partitioned = { ret : cases; exn : cases; eff : cases }
 
-  let partition : cases -> partitioned =
-    ListLabels.fold_right ~init:{ ret = []; exn = []; eff = [] }
+  let partition : map_subnodes:Ast_traverse.map -> cases -> partitioned =
+   fun ~map_subnodes cases ->
+    ListLabels.fold_right cases ~init:{ ret = []; exn = []; eff = [] }
       ~f:(fun case acc ->
         match case.pc_lhs with
         | [%pat? [%effect? [%p? eff_pattern], [%p? k_pattern]]] ->
+            let pc_rhs =
+              let loc = case.pc_rhs.pexp_loc in
+              [%expr
+                Some
+                  (fun ([%p k_pattern] :
+                         (a, _) Obj.Effect_handlers.Deep.continuation) ->
+                    [%e map_subnodes#expression case.pc_rhs])]
+            in
             let case =
-              {
-                case with
-                pc_lhs = eff_pattern;
-                pc_rhs =
-                  (let loc = case.pc_rhs.pexp_loc in
-                   [%expr
-                     Some
-                       (fun ([%p k_pattern] :
-                              (a, _) Obj.Effect_handlers.Deep.continuation) ->
-                         [%e case.pc_rhs])]);
-              }
+              { pc_lhs = eff_pattern; pc_rhs; pc_guard = case.pc_guard }
             in
             { acc with eff = case :: acc.eff }
         | [%pat? exception [%p? exn_pattern]] ->
-            let case = { case with pc_lhs = exn_pattern } in
+            let pc_rhs = map_subnodes#expression case.pc_rhs in
+            let case =
+              { pc_lhs = exn_pattern; pc_rhs; pc_guard = case.pc_guard }
+            in
             { acc with exn = case :: acc.exn }
         | _ ->
             (* TODO: handle guards on effects and exceptions properly *)
@@ -112,12 +114,46 @@ module Scrutinee = struct
         { function_; argument }
 end
 
+(* Both [exnc] and [effc] require a noop case to represent an unhandled
+   exception or effect respectively. [exnc] reraises the unhandled exception,
+   and [effc] returns None.
+
+   Caveat: it's possible that a noop case is not needed becuase the user's
+   handler is exhaustive, resulting in an unwanted "redundant case" warning.
+   We get around this by checking whether the users' cases are syntactically
+   exhaustive and not adding the noop case if so.
+
+   It'd be nice to solve this by just locally disabling the redundant case
+   warning with [[@warning "-11"]], but this would have to go on the entire
+   match (in which case it leaks the users' subexpressions). Unfortunately,
+   OCaml doesn't support [[@warning "-11"]] on individual patterns. *)
+let extensible_cases_are_exhaustive : cases -> bool =
+  let pattern_matches_anything p =
+    match p.ppat_desc with Ppat_any | Ppat_var _ -> true | _ -> false
+  in
+  List.exists (fun case ->
+      Option.is_none case.pc_guard && pattern_matches_anything case.pc_lhs)
+
 let effc ~loc cases =
+  let noop_case =
+    match extensible_cases_are_exhaustive cases with
+    | true -> []
+    | false -> [ case ~lhs:[%pat? _] ~guard:None ~rhs:[%expr None] ]
+  in
   [%expr
     fun (type a) (effect : a Obj.Effect_handlers.eff) ->
-      [%e
-        pexp_match ~loc [%expr effect]
-          (cases @ [ case ~lhs:[%pat? _] ~guard:None ~rhs:[%expr None] ])]]
+      [%e pexp_match ~loc [%expr effect] (cases @ noop_case)]]
+
+let exnc ~loc cases =
+  match cases with
+  | [] -> [%expr raise] (* TODO: defend against shadowing raise *)
+  | _ :: _ ->
+      let noop_case =
+        match extensible_cases_are_exhaustive cases with
+        | true -> []
+        | false -> [ case ~lhs:[%pat? e] ~guard:None ~rhs:[%expr raise e] ]
+      in
+      pexp_function ~loc (cases @ noop_case)
 
 let impl : structure -> structure =
   (object (this)
@@ -130,19 +166,12 @@ let impl : structure -> structure =
        | { pexp_desc = Pexp_match (scrutinee, cases); _ }
          when Cases.contain_effect_handler cases ->
            let scrutinee =
-             Scrutinee.of_expression (super#expression scrutinee)
+             Scrutinee.of_expression (this#expression scrutinee)
            in
-           let cases = Cases.partition cases in
-           let expand_cases_rhs =
-             List.map (fun case ->
-                 { case with pc_rhs = this#expression case.pc_rhs })
-           in
-           let retc = pexp_function ~loc (cases.ret |> expand_cases_rhs)
-           and exnc =
-             pexp_function ~loc
-               ((cases.exn |> expand_cases_rhs)
-               @ [ case ~lhs:[%pat? e] ~guard:None ~rhs:[%expr raise e] ])
-           and effc = effc ~loc (cases.eff |> expand_cases_rhs) in
+           let cases = Cases.partition ~map_subnodes:this cases in
+           let retc = pexp_function ~loc cases.ret
+           and exnc = exnc ~loc cases.exn
+           and effc = effc ~loc cases.eff in
            [%expr
              Obj.Effect_handlers.Deep.match_with [%e scrutinee.function_]
                [%e scrutinee.argument]
@@ -151,14 +180,10 @@ let impl : structure -> structure =
        | { pexp_desc = Pexp_try (scrutinee, cases); _ }
          when Cases.contain_effect_handler cases ->
            let scrutinee =
-             Scrutinee.of_expression (super#expression scrutinee)
+             Scrutinee.of_expression (this#expression scrutinee)
            in
-           let cases = Cases.partition cases in
-           let expand_cases_rhs =
-             List.map (fun case ->
-                 { case with pc_rhs = this#expression case.pc_rhs })
-           in
-           let effc = effc ~loc (cases.eff |> expand_cases_rhs) in
+           let cases = Cases.partition ~map_subnodes:this cases in
+           let effc = effc ~loc cases.eff in
            [%expr
              Obj.Effect_handlers.Deep.try_with [%e scrutinee.function_]
                [%e scrutinee.argument]

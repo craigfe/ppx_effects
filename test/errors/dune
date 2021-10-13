@@ -22,7 +22,7 @@
   (source_tree .))
  (action
   (with-stdout-to
-    %{targets}
+   %{targets}
    (run ../gen_dune_rules.exe --expect-failure))))
 
 (rule

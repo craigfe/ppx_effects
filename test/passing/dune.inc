@@ -1,3 +1,32 @@
+; -------- Test: `exhaustive_handlers.ml` --------; The PPX-dependent executable under test
+(executable
+ (name exhaustive_handlers)
+ (modules exhaustive_handlers)
+ (preprocess (pps ppx_effects)))
+
+; Run the PPX on the `.ml` file
+(rule
+ (targets exhaustive_handlers.actual)
+ (deps
+  (:pp pp.exe)
+  (:input exhaustive_handlers.ml))
+ (action
+  (run ./%{pp} --impl %{input} -o %{targets})))
+
+; Compare the post-processed output to the .expected file
+(rule
+ (alias runtest)
+ (package ppx_effects)
+ (action
+  (diff exhaustive_handlers.expected exhaustive_handlers.actual)))
+
+; Ensure that the post-processed executable runs correctly
+(rule
+ (alias runtest)
+ (package ppx_effects)
+ (action
+  (run ./exhaustive_handlers.exe)))
+
 ; -------- Test: `main.ml` --------; The PPX-dependent executable under test
 (executable
  (name main)

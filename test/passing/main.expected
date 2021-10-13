@@ -19,7 +19,7 @@ let () =
   Obj.Effect_handlers.Deep.match_with comp ()
     {
       retc = (function | e -> e);
-      exnc = (function | e -> raise e);
+      exnc = raise;
       effc = fun (type a) ->
         fun (effect : a Obj.Effect_handlers.eff) ->
           match effect with
