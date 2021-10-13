@@ -1,0 +1,2 @@
+File "malformed_payload.ml", line 1, characters 23-55:
+Error: ppx_effects: invalid [%effect? ...] payload. Expected a pattern for an (eff, continuation) pair, e.g. ‘[%effect? Foo, k]’.

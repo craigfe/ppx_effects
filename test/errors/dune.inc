@@ -63,6 +63,49 @@
   (diff invalid_payload_type_in_try.expected
     invalid_payload_type_in_try.actual)))
 
+; -------- Test: `malformed_payload.ml` --------
+
+; Run the PPX on the `.ml` file
+(rule
+ (targets malformed_payload.actual)
+ (deps
+  (:pp pp.exe)
+  (:input malformed_payload.ml))
+ (action
+  ; expect the process to fail, capturing stderr
+  (with-stderr-to
+   %{targets}
+   (bash "! ./%{pp} -no-color --impl %{input}"))))
+
+; Compare the post-processed output to the .expected file
+(rule
+ (alias runtest)
+ (package ppx_effects)
+ (action
+  (diff malformed_payload.expected malformed_payload.actual)))
+
+; -------- Test: `malformed_payload_hint_missing_comma.ml` --------
+
+; Run the PPX on the `.ml` file
+(rule
+ (targets malformed_payload_hint_missing_comma.actual)
+ (deps
+  (:pp pp.exe)
+  (:input malformed_payload_hint_missing_comma.ml))
+ (action
+  ; expect the process to fail, capturing stderr
+  (with-stderr-to
+   %{targets}
+   (bash "! ./%{pp} -no-color --impl %{input}"))))
+
+; Compare the post-processed output to the .expected file
+(rule
+ (alias runtest)
+ (package ppx_effects)
+ (action
+  (diff malformed_payload_hint_missing_comma.expected
+    malformed_payload_hint_missing_comma.actual)))
+
 ; -------- Test: `rebind.ml` --------
 
 ; Run the PPX on the `.ml` file
