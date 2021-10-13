@@ -1,0 +1,2 @@
+File "match_without_value_case.ml", line 1, characters 9-41:
+Error: ppx_effects: none of the patterns in this ‘match’ expression match values.

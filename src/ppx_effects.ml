@@ -231,7 +231,13 @@ let impl : structure -> structure =
              Scrutinee.of_expression (this#expression scrutinee)
            in
            let cases = Cases.partition ~map_subnodes:this cases in
-           let retc = pexp_function ~loc cases.ret
+           let retc =
+             match cases.ret with
+             | [] ->
+                 raise_errorf ~loc
+                   "none of the patterns in this %a expression match values."
+                   pp_quoted "match"
+             | _ :: _ -> pexp_function ~loc cases.ret
            and exnc = exnc ~loc cases.exn
            and effc = effc ~loc cases.eff in
            [%expr

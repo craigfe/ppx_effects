@@ -127,6 +127,27 @@
   (diff malformed_payload_hint_missing_comma.expected
     malformed_payload_hint_missing_comma.actual)))
 
+; -------- Test: `match_without_value_case.ml` --------
+
+; Run the PPX on the `.ml` file
+(rule
+ (targets match_without_value_case.actual)
+ (deps
+  (:pp pp.exe)
+  (:input match_without_value_case.ml))
+ (action
+  ; expect the process to fail, capturing stderr
+  (with-stderr-to
+   %{targets}
+   (bash "! ./%{pp} -no-color --impl %{input}"))))
+
+; Compare the post-processed output to the .expected file
+(rule
+ (alias runtest)
+ (package ppx_effects)
+ (action
+  (diff match_without_value_case.expected match_without_value_case.actual)))
+
 ; -------- Test: `rebind.ml` --------
 
 ; Run the PPX on the `.ml` file
