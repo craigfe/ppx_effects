@@ -134,7 +134,10 @@ let extensible_cases_are_exhaustive : cases -> bool =
   List.exists (fun case ->
       Option.is_none case.pc_guard && pattern_matches_anything case.pc_lhs)
 
-let effc ~loc cases =
+(* Given a list of effect handlers, build a corresponding [effc] continuation to
+   pass to [Deep.{try,match}_with]. *)
+let effc ~loc (cases : cases) : expression =
+  assert (cases <> []);
   let noop_case =
     match extensible_cases_are_exhaustive cases with
     | true -> []
@@ -144,7 +147,9 @@ let effc ~loc cases =
     fun (type a) (effect : a Obj.Effect_handlers.eff) ->
       [%e pexp_match ~loc [%expr effect] (cases @ noop_case)]]
 
-let exnc ~loc cases =
+(* Given a list of exception handlers, build a corresponding [exnc] continuation
+   to pass to [Deep.{try,match}_with]. *)
+let exnc ~loc (cases : cases) : expression =
   match cases with
   | [] -> [%expr raise] (* TODO: defend against shadowing raise *)
   | _ :: _ ->
@@ -155,6 +160,10 @@ let exnc ~loc cases =
       in
       pexp_function ~loc (cases @ noop_case)
 
+(* Captures top-level [%effect? _] in [try] / [match] expressions and converts
+   them to [Deep.{try,match}_with].
+
+   Also handles [exception%effect ...] in structures – see below. *)
 let impl : structure -> structure =
   (object (this)
      inherit Ast_traverse.map as super
@@ -162,7 +171,7 @@ let impl : structure -> structure =
      method! expression expr =
        let loc = expr.pexp_loc in
        match expr with
-       (* match _ with [%effect? E _, k] -> ... *)
+       (* Handles: [ match _ with [%effect? E _, k] -> ... ] *)
        | { pexp_desc = Pexp_match (scrutinee, cases); _ }
          when Cases.contain_effect_handler cases ->
            let scrutinee =
@@ -176,7 +185,7 @@ let impl : structure -> structure =
              Obj.Effect_handlers.Deep.match_with [%e scrutinee.function_]
                [%e scrutinee.argument]
                { retc = [%e retc]; exnc = [%e exnc]; effc = [%e effc] }]
-       (* try _ with [%effect? E _, k] -> ... *)
+       (* Handles: [ try _ with [%effect? E _, k] -> ... ] *)
        | { pexp_desc = Pexp_try (scrutinee, cases); _ }
          when Cases.contain_effect_handler cases ->
            let scrutinee =
@@ -190,39 +199,6 @@ let impl : structure -> structure =
                { effc = [%e effc] }]
        | e -> super#expression e
 
-     method! structure_item stri =
-       let loc = stri.pstr_loc in
-       match stri with
-       (* exception%effect ... *)
-       | [%stri [%%effect [%%i? { pstr_desc = Pstr_exception exn; _ }]]] ->
-           (* TODO: handle attributes on the extension? *)
-           let name = exn.ptyexn_constructor.pext_name in
-           let eff_type = Located.lident ~loc "Obj.Effect_handlers.eff" in
-           let constrs, args =
-             match exn.ptyexn_constructor.pext_kind with
-             | Pext_decl (constrs, body) ->
-                 let body =
-                   Option.map
-                     (fun typ -> ptyp_constr ~loc eff_type [ typ ])
-                     body
-                 in
-                 (constrs, body)
-             | Pext_rebind _ ->
-                 raise_errorf ~loc
-                   "cannot process effect defined as an alias of %a." pp_quoted
-                   name.txt
-           in
-           let params = [ (ptyp_any ~loc, (NoVariance, NoInjectivity)) ] in
-           pstr_typext ~loc
-             (type_extension ~loc ~path:eff_type ~params
-                ~constructors:
-                  [
-                    extension_constructor ~loc ~name
-                      ~kind:(Pext_decl (constrs, args));
-                  ]
-                ~private_:Public)
-       | s -> super#structure_item s
-
      method! extension =
        function
        | { txt = "effect"; loc }, _ ->
@@ -235,9 +211,43 @@ let impl : structure -> structure =
   end)
     #structure
 
+let effect_decl_of_exn_decl ~loc (exn : type_exception) : type_extension =
+  let name = exn.ptyexn_constructor.pext_name in
+  let eff_type = Located.lident ~loc "Obj.Effect_handlers.eff" in
+  let constrs, args =
+    match exn.ptyexn_constructor.pext_kind with
+    | Pext_decl (constrs, body) ->
+        let body =
+          Option.map (fun typ -> ptyp_constr ~loc eff_type [ typ ]) body
+        in
+        (constrs, body)
+    | Pext_rebind _ ->
+        raise_errorf ~loc "cannot process effect defined as an alias of %a."
+          pp_quoted name.txt
+  in
+  let params = [ (ptyp_any ~loc, (NoVariance, NoInjectivity)) ] in
+  type_extension ~loc ~path:eff_type ~params
+    ~constructors:
+      [ extension_constructor ~loc ~name ~kind:(Pext_decl (constrs, args)) ]
+    ~private_:Public
+
+let str_effect_decl =
+  Extension.declare "effect" Structure_item
+    Ast_pattern.(pstr (pstr_exception __ ^:: nil))
+    (fun ~loc ~path:_ exn ->
+      pstr_typext ~loc (effect_decl_of_exn_decl ~loc exn))
+
+let sig_effect_decl =
+  Extension.declare "effect" Signature_item
+    Ast_pattern.(psig (psig_exception __ ^:: nil))
+    (fun ~loc ~path:_ exn ->
+      psig_typext ~loc (effect_decl_of_exn_decl ~loc exn))
+
 let () =
   Reserved_namespaces.reserve namespace;
-  Driver.register_transformation ~impl namespace
+  Driver.register_transformation
+    ~extensions:[ str_effect_decl; sig_effect_decl ]
+    ~impl namespace
 
 (*————————————————————————————————————————————————————————————————————————————
    Copyright (c) 2021 Craig Ferguson <me@craigfe.io>
