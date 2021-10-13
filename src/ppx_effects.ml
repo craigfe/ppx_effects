@@ -198,12 +198,18 @@ let effc ~loc (cases : cases) : expression =
    to pass to [Deep.{try,match}_with]. *)
 let exnc ~loc (cases : cases) : expression =
   match cases with
-  | [] -> [%expr raise] (* TODO: defend against shadowing raise *)
+  | [] -> [%expr Ppx_effects_runtime.raise]
   | _ :: _ ->
       let noop_case =
         match extensible_cases_are_exhaustive cases with
         | true -> []
-        | false -> [ case ~lhs:[%pat? e] ~guard:None ~rhs:[%expr raise e] ]
+        | false ->
+            [
+              case
+                ~lhs:[%pat? e]
+                ~guard:None
+                ~rhs:[%expr Ppx_effects_runtime.raise e];
+            ]
       in
       pexp_function ~loc (cases @ noop_case)
 

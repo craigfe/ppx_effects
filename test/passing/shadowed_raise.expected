@@ -1,0 +1,14 @@
+let raise = `shadowed
+let () =
+  Obj.Effect_handlers.Deep.match_with (fun `unit -> ()) `unit
+    {
+      retc = (function | () -> ());
+      exnc = Ppx_effects_runtime.raise;
+      effc = fun (type effect_param) ->
+        fun (effect : effect_param Obj.Effect_handlers.eff) ->
+          (match effect with | _ -> Some ((fun _ -> ())) : ((effect_param, 
+                                                              _)
+                                                              Obj.Effect_handlers.Deep.continuation
+                                                              -> _)
+                                                             option)
+    }

@@ -22,7 +22,7 @@ let () =
   Obj.Effect_handlers.Deep.match_with comp ()
     {
       retc = (function | e -> e);
-      exnc = raise;
+      exnc = Ppx_effects_runtime.raise;
       effc = fun (type effect_param) ->
         fun (effect : effect_param Obj.Effect_handlers.eff) ->
           (match effect with

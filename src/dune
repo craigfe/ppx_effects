@@ -1,6 +1,13 @@
 (library
+ (name ppx_effects_runtime)
+ (public_name ppx_effects.runtime)
+ (modules ppx_effects_runtime))
+
+(library
  (public_name ppx_effects)
+ (modules :standard \ ppx_effects_runtime)
  (kind ppx_rewriter)
+ (ppx_runtime_libraries ppx_effects_runtime)
  (libraries ppxlib)
  (preprocess
   (pps ppxlib.metaquot)))
