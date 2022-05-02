@@ -51,7 +51,10 @@ module Cases = struct
         in
         match body with
         | [%pat? [%p? eff_pattern], [%p? k_pattern]] ->
-            let pc_rhs =
+          let pc_rhs =
+            match case.pc_rhs.pexp_desc with
+            | Pexp_unreachable -> case.pc_rhs
+            | _ ->
               let loc = case.pc_rhs.pexp_loc in
               [%expr
                 Some
