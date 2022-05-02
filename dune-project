@@ -13,5 +13,5 @@
  (description "PPX syntax for untyped effects in OCaml 5.0")
  (documentation "https://craigfe.github.io/ppx-effects")
  (depends
-  (ocaml-variants (= 4.12.0+domains))
+  (ocaml (>= 5.0))
   (ppxlib (and (>= 0.12.0)))))

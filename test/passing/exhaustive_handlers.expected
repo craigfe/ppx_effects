@@ -5,9 +5,8 @@ let run_and_discard_effect f a =
       exnc = Ppx_effects_runtime.raise;
       effc =
         (let effc : type continue_input.
-           continue_input Stdlib.EffectHandlers.eff ->
-             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
-                _)
+           continue_input Stdlib.Effect.t ->
+             ((continue_input, _) Stdlib.Effect.Deep.continuation -> _)
                option
            = function | _ -> Some ((fun _ -> ())) in
          effc)
@@ -19,9 +18,8 @@ let run_and_discard_both f a =
       exnc = (function | _ -> ());
       effc =
         (let effc : type continue_input.
-           continue_input Stdlib.EffectHandlers.eff ->
-             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
-                _)
+           continue_input Stdlib.Effect.t ->
+             ((continue_input, _) Stdlib.Effect.Deep.continuation -> _)
                option
            = function | _ -> Some ((fun _ -> ())) in
          effc)
