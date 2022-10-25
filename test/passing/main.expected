@@ -1,16 +1,15 @@
-open Stdlib.EffectHandlers
-open Stdlib.EffectHandlers.Deep
-type _ Stdlib.EffectHandlers.eff +=  
-  | E: string Stdlib.EffectHandlers.eff 
+open Stdlib.Effect
+open Stdlib.Effect.Deep
+type _ Stdlib.Effect.t +=  
+  | E: string Stdlib.Effect.t 
 let comp () = print_string "0 "; print_string (perform E); print_string "3 "
 let () =
   Ppx_effects_runtime.try_with comp ()
     {
       Ppx_effects_runtime.effc =
         (let effc : type continue_input.
-           continue_input Stdlib.EffectHandlers.eff ->
-             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
-                _)
+           continue_input Stdlib.Effect.t ->
+             ((continue_input, _) Stdlib.Effect.Deep.continuation -> _)
                option
            =
            function
@@ -28,9 +27,8 @@ let () =
       exnc = Ppx_effects_runtime.raise;
       effc =
         (let effc : type continue_input.
-           continue_input Stdlib.EffectHandlers.eff ->
-             ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation ->
-                _)
+           continue_input Stdlib.Effect.t ->
+             ((continue_input, _) Stdlib.Effect.Deep.continuation -> _)
                option
            =
            function

@@ -8,4 +8,4 @@ let _ =
   | exception Failure s when String.equal s "Oops" -> 'd'
   | [%effect? Foo b, _] when b -> 'e'
   | [%effect? Foo b, _ when not b] -> 'e'
-  | [%effect? Foo _, k] -> EffectHandlers.Deep.continue k ()
+  | [%effect? Foo _, k] -> Effect.Deep.continue k ()
