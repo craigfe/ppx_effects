@@ -1,4 +1,4 @@
-exception%effect E: string
+exception%effect E : string
 
 let f () = Stdlib.Effect.perform E
 let g () = f

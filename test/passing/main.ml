@@ -1,7 +1,7 @@
 open Stdlib.Effect
 open Stdlib.Effect.Deep
 
-exception%effect E: string
+exception%effect E : string
 
 let comp () =
   print_string "0 ";

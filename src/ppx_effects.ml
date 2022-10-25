@@ -16,8 +16,8 @@ let raise_errorf ~loc fmt = Location.raise_errorf ~loc ("%s: " ^^ fmt) namespace
     - effect patterns (written using [\[%effect? ...\]]);
     - return patterns (available only to [match]).
 
-    The [Stdlib.Effect] API requires passing different continuations for
-    each of these categories. *)
+    The [Stdlib.Effect] API requires passing different continuations for each of
+    these categories. *)
 module Cases = struct
   type partitioned = { ret : cases; exn : cases; eff : cases }
 
@@ -79,7 +79,8 @@ module Cases = struct
             | {
              ppat_desc =
                Ppat_construct
-                 (effect, Some ([], { ppat_desc = Ppat_var { txt = "k"; _ }; _ }));
+                 ( effect,
+                   Some ([], { ppat_desc = Ppat_var { txt = "k"; _ }; _ }) );
              _;
             } ->
                 raise_errorf ~loc "%s.@,Hint: did you mean %a?" error_prefix
@@ -195,8 +196,7 @@ let effc ~loc (cases : cases) : expression =
     let effc :
         type continue_input.
         continue_input Stdlib.Effect.t ->
-        ((continue_input, _) Stdlib.Effect.Deep.continuation -> _)
-        option =
+        ((continue_input, _) Stdlib.Effect.Deep.continuation -> _) option =
       [%e pexp_function ~loc (cases @ noop_case)]
     in
     effc]
