@@ -16,8 +16,8 @@ let raise_errorf ~loc fmt = Location.raise_errorf ~loc ("%s: " ^^ fmt) namespace
     - effect patterns (written using [\[%effect? ...\]]);
     - return patterns (available only to [match]).
 
-    The [Stdlib.EffectHandlers] API requires passing different continuations for
-    each of these categories. *)
+    The [Stdlib.Effect] API requires passing different continuations for each of
+    these categories. *)
 module Cases = struct
   type partitioned = { ret : cases; exn : cases; eff : cases }
 
@@ -79,7 +79,8 @@ module Cases = struct
             | {
              ppat_desc =
                Ppat_construct
-                 (effect, Some { ppat_desc = Ppat_var { txt = "k"; _ }; _ });
+                 ( effect,
+                   Some ([], { ppat_desc = Ppat_var { txt = "k"; _ }; _ }) );
              _;
             } ->
                 raise_errorf ~loc "%s.@,Hint: did you mean %a?" error_prefix
@@ -109,7 +110,7 @@ module Cases = struct
         | _ -> false)
 end
 
-(** The [Stdlib.EffectHandlers] API requires effects to happen under a function
+(** The [Stdlib.Effect] API requires effects to happen under a function
     application *)
 module Scrutinee = struct
   type delayed = { function_ : expression; argument : expression }
@@ -194,9 +195,8 @@ let effc ~loc (cases : cases) : expression =
   [%expr
     let effc :
         type continue_input.
-        continue_input Stdlib.EffectHandlers.eff ->
-        ((continue_input, _) Stdlib.EffectHandlers.Deep.continuation -> _)
-        option =
+        continue_input Stdlib.Effect.t ->
+        ((continue_input, _) Stdlib.Effect.Deep.continuation -> _) option =
       [%e pexp_function ~loc (cases @ noop_case)]
     in
     effc]
@@ -283,14 +283,14 @@ let impl : structure -> structure =
 
 let effect_decl_of_exn_decl ~loc (exn : type_exception) : type_extension =
   let name = exn.ptyexn_constructor.pext_name in
-  let eff_type = Located.lident ~loc "Stdlib.EffectHandlers.eff" in
-  let constrs, args =
+  let eff_type = Located.lident ~loc "Stdlib.Effect.t" in
+  let constrs, v, args =
     match exn.ptyexn_constructor.pext_kind with
-    | Pext_decl (constrs, body) ->
+    | Pext_decl (constrs, v, body) ->
         let body =
           Option.map (fun typ -> ptyp_constr ~loc eff_type [ typ ]) body
         in
-        (constrs, body)
+        (constrs, body, v)
     | Pext_rebind _ ->
         raise_errorf ~loc "cannot process effect defined as an alias of %a."
           pp_quoted name.txt
@@ -298,7 +298,7 @@ let effect_decl_of_exn_decl ~loc (exn : type_exception) : type_extension =
   let params = [ (ptyp_any ~loc, (NoVariance, NoInjectivity)) ] in
   type_extension ~loc ~path:eff_type ~params
     ~constructors:
-      [ extension_constructor ~loc ~name ~kind:(Pext_decl (constrs, args)) ]
+      [ extension_constructor ~loc ~name ~kind:(Pext_decl (constrs, args, v)) ]
     ~private_:Public
 
 let str_effect_decl =
