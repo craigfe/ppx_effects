@@ -80,7 +80,7 @@ module Cases = struct
              ppat_desc =
                Ppat_construct
                  ( effect,
-                   Some ([], { ppat_desc = Ppat_var { txt = "k"; _ }; _ }) );
+                   Some { ppat_desc = Ppat_var { txt = "k"; _ }; _ } );
              _;
             } ->
                 raise_errorf ~loc "%s.@,Hint: did you mean %a?" error_prefix
@@ -284,13 +284,13 @@ let impl : structure -> structure =
 let effect_decl_of_exn_decl ~loc (exn : type_exception) : type_extension =
   let name = exn.ptyexn_constructor.pext_name in
   let eff_type = Located.lident ~loc "Stdlib.Effect.t" in
-  let constrs, v, args =
+  let constrs, args =
     match exn.ptyexn_constructor.pext_kind with
-    | Pext_decl (constrs, v, body) ->
+    | Pext_decl (constrs, body) ->
         let body =
           Option.map (fun typ -> ptyp_constr ~loc eff_type [ typ ]) body
         in
-        (constrs, body, v)
+        (constrs, body)
     | Pext_rebind _ ->
         raise_errorf ~loc "cannot process effect defined as an alias of %a."
           pp_quoted name.txt
@@ -298,7 +298,7 @@ let effect_decl_of_exn_decl ~loc (exn : type_exception) : type_extension =
   let params = [ (ptyp_any ~loc, (NoVariance, NoInjectivity)) ] in
   type_extension ~loc ~path:eff_type ~params
     ~constructors:
-      [ extension_constructor ~loc ~name ~kind:(Pext_decl (constrs, args, v)) ]
+      [ extension_constructor ~loc ~name ~kind:(Pext_decl (constrs, args)) ]
     ~private_:Public
 
 let str_effect_decl =
